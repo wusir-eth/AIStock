@@ -1,0 +1,139 @@
+// Prisma Schema for AgentConsensus
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// User model with SecondMe OAuth tokens
+model User {
+  id            String    @id @default(cuid())
+  secondMeId    String    @unique
+  accessToken   String
+  refreshToken  String?
+  tokenExpires  DateTime?
+  name          String?
+  email         String?
+  avatar        String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  debates       Debate[]     @relation("DebateCreator")
+  votes         Vote[]
+  notes         Note[]
+}
+
+// AI Agent model
+model Agent {
+  id          String   @id @default(cuid())
+  name        String
+  role        String   // 激进派, 稳健派, 哨兵, SecondMe AI-1, SecondMe AI-2
+  style       String   // 投资风格描述
+  source      String   // local, secondme
+  secondMeId  String?  // SecondMe user ID if source is secondme
+  weight      Float    @default(1.0) // 辩论权重
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  arguments   Argument[]
+  votes       Vote[]
+  performance AgentPerformance[]
+}
+
+// Debate round (40分钟循环)
+model Debate {
+  id          String   @id @default(cuid())
+  round       Int      // 循环轮次
+  status      String   // sensing, debating, trading, reviewing
+  startedAt   DateTime @default(now())
+  completedAt DateTime?
+  targetStock String?  // 选中的股票
+  entryPrice  Float?   // 入场价
+  targetPrice Float?   // 目标价
+  stopLoss    Float?   // 止损价
+  actualReturn Float?  // 实际收益率
+  createdBy   String?
+
+  // Relations
+  creator     User?    @relation("DebateCreator", fields: [createdBy], references: [id])
+  arguments   Argument[]
+  votes       Vote[]
+  notes       Note[]
+
+  @@index([round])
+  @@index([status])
+}
+
+// Agent argument during debate
+model Argument {
+  id          String   @id @default(cuid())
+  debateId    String
+  agentId     String
+  content     String   // 论点内容
+  sentiment   String   // bullish, bearish, neutral
+  stock       String   // 推荐的股票
+  confidence  Float    // 信心度 0-1
+  createdAt   DateTime @default(now())
+
+  Debate Debate @relation(fields: [debateId], references: [id], onDelete: Cascade)
+  Agent  Agent  @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@index([debateId])
+}
+
+// Voting result
+model Vote {
+  id          String   @id @default(cuid())
+  debateId    String
+  agentId     String
+  stock       String   // 投票的股票
+  weight      Float    // 投票权重
+  reason      String?  // 投票理由
+  createdAt   DateTime @default(now())
+
+  Debate Debate @relation(fields: [debateId], references: [id], onDelete: Cascade)
+  Agent  Agent  @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  User   User?  @relation(fields: [userId], references: [id])
+
+  userId String?
+
+  @@index([debateId])
+}
+
+// Agent performance tracking
+model AgentPerformance {
+  id          String   @id @default(cuid())
+  agentId     String
+  debateId    String
+  correct     Boolean // 预测是否正确
+  returnRate  Float?  // 收益率
+  weightChange Float  // 权重变化
+  createdAt   DateTime @default(now())
+
+  Agent Agent @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@index([agentId])
+}
+
+// Note model for SecondMe integration
+model Note {
+  id          String   @id @default(cuid())
+  userId      String
+  title       String
+  content     String
+  debateId    String?
+  secondMeId  String?  // Synced with SecondMe
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  User   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  Debate Debate? @relation(fields: [debateId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([secondMeId])
+}
