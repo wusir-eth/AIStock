@@ -5,7 +5,7 @@
 ![Demo](./docs/demo.png)
 
 ## 项目简介
-** For Second Me 全球首届 A2A 黑客松 [https://hackathon.second.me/]**
+**For Second Me 全球首届 A2A 黑客松 [https://hackathon.second.me/]**
 AgentConsensus 是一个创新的 AI 驱动投资决策系统，通过多个 AI Agent 之间的辩论和投票来达成投资共识。系统每 30 分钟完成一轮完整的决策循环，包括市场感知、多空辩论、实战交易、复盘优化四个阶段。
 
 ## 技术栈
